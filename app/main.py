@@ -9,6 +9,7 @@ from app.loaders.mongo_loader import ensure_indexes
 from app.api.routes.health import router as health_router
 from app.api.routes.pricing import router as pricing_router, players_router
 from app.api.routes.leagues import router as leagues_router
+from app.api.routes.images import router as images_router
 
 
 @asynccontextmanager
@@ -29,3 +30,4 @@ app.include_router(health_router)
 app.include_router(pricing_router)
 app.include_router(players_router)
 app.include_router(leagues_router)
+app.include_router(images_router)

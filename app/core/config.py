@@ -102,5 +102,13 @@ class Settings(BaseSettings):
     FETCH_PREV_SEASON_STATS: bool = True       # set False for fast/test runs
     PREV_SEASON_CACHE_DAYS: int = 180          # prev-season stats don't change
 
+    # ── DigitalOcean Spaces (CDN) ─────────────────────────────────────────────
+    DO_ACCESS_KEY_ID: str = ""
+    DO_BUCKET_SECRET_KEY: str = ""
+    DO_BUCKET_NAME: str = "fantasyfootball"
+    DO_ORIGIN_ENDPOINT: str = "https://fantasyfootball.sgp1.digitaloceanspaces.com"
+    DO_CDN_ENDPOINT: str = "https://fantasyfootball.sgp1.cdn.digitaloceanspaces.com"
+    DO_IMAGES_FOLDER: str = "GS/players"
+
 
 settings = Settings()
