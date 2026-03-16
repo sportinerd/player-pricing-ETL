@@ -102,6 +102,9 @@ class Settings(BaseSettings):
     FETCH_PREV_SEASON_STATS: bool = True       # set False for fast/test runs
     PREV_SEASON_CACHE_DAYS: int = 180          # prev-season stats don't change
 
+    # ── Player mapping ─────────────────────────────────────────────────────────
+    MAPPING_PROFILE_CACHE_DAYS: int = 30       # GS player profiles are static
+
     # ── DigitalOcean Spaces (CDN) ─────────────────────────────────────────────
     DO_ACCESS_KEY_ID: str = ""
     DO_BUCKET_SECRET_KEY: str = ""
