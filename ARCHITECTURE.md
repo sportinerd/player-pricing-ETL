@@ -79,8 +79,22 @@ This document explains how the pricing pipeline works end-to-end: where data com
               │   app/api/routes/          │
               │   ├── health.py            │
               │   ├── pricing.py           │
-              │   └── leagues.py           │
+              │   ├── leagues.py           │
+              │   └── images.py            │
               └────────────────────────────┘
+
+              ┌────────────────────────────┐      ┌──────────────────────────────┐
+              │   Image Sync               │      │  DigitalOcean Spaces CDN     │
+              │   app/services/            │─────▶│  GS/players/{id}.png         │
+              │   image_service.py         │      └──────────────────────────────┘
+              │   app/utils/cdn.py         │                   │ CDN URL
+              │   (boto3, asyncio.thread)  │                   ▼
+              │                            │      ┌──────────────────────────────┐
+              │   GoalServe soccerstats/   │      │  Fantasy_Global_Livescore DB │
+              │   player/{id} → base64 PNG │      │  image → CDN URL             │
+              └────────────────────────────┘      │  sportsmonk_image_url →      │
+                                                  │    old SM placeholder        │
+                                                  └──────────────────────────────┘
 ```
 
 ---
@@ -666,6 +680,24 @@ Team IDs and strength map per league/season.
 #### `goalserve_cache`
 Raw GoalServe API responses with a 4-hour TTL. Used as fallback when live API calls fail. MongoDB automatically deletes expired documents via a TTL index.
 
+#### `image_sync_jobs`
+One document per bulk image sync run. Tracks progress in real-time as the background job processes players.
+
+```json
+{
+  "_id": "uuid-string",
+  "started_at": "2026-03-15T19:13:22Z",
+  "status": "queued | running | completed | failed",
+  "total": 276,
+  "processed": 276,
+  "updated": 156,
+  "skipped_empty_image": 120,
+  "skipped_already_set": 0,
+  "failed": 0,
+  "completed_at": "2026-03-15T19:19:01Z"
+}
+```
+
 **Indexes:**
 - `player_prices`: `(run_id, league_id)`, `(player_id)`, `(position, price DESC)`
 - `pricing_runs`: `(league_id, run_at DESC)`
@@ -754,6 +786,16 @@ Master player records sourced from SportMonks. The pricing pipeline writes only 
 | GET | `/leagues/{league_id}/injuries` | Cached injury records |
 | GET | `/leagues/{league_id}/teams` | Team IDs and strength map |
 
+### Images
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/images/placeholder-stats` | Count FGL players still carrying SM placeholder image, broken down by GS ID availability |
+| POST | `/images/sync/bulk` | Bulk-replace placeholder images via GoalServe + DO CDN. `dry_run=true` previews without writing. Returns 202 + `job_id` when `dry_run=false` |
+| GET | `/images/sync/bulk/status/{job_id}` | Poll progress of a running or completed bulk sync job |
+| GET | `/images/sync/runs` | List all past image sync jobs, most recent first. Supports `?status=` filter |
+| POST | `/images/sync/player/{api_player_id}` | Sync image for a single player by SM `api_player_id`. Supports `dry_run=true` |
+
 ---
 
 ## 9. Configuration Reference
@@ -768,6 +810,12 @@ All tuning constants are in `app/core/config.py` and can be overridden via envir
 | `MONGO_URI` | Yes | MongoDB connection string (used for both pricing DB and FGL DB) |
 | `PRICING_DB` | No | Pricing database name (default: `sportinerd_pricing`) |
 | `FGL_DB_NAME` | No | FGL database name (default: `Fantasy_Global_Livescore`) |
+| `DO_ACCESS_KEY_ID` | Yes* | DigitalOcean Spaces access key (*required for image sync) |
+| `DO_BUCKET_SECRET_KEY` | Yes* | DigitalOcean Spaces secret key |
+| `DO_BUCKET_NAME` | No | Spaces bucket name (default: `fantasyfootball`) |
+| `DO_ORIGIN_ENDPOINT` | No | Spaces origin endpoint URL |
+| `DO_CDN_ENDPOINT` | No | Spaces CDN endpoint URL |
+| `DO_IMAGES_FOLDER` | No | Folder path inside bucket (default: `GS/players`) |
 
 ### Stat Weights (Performance Score)
 

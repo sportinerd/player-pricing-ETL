@@ -58,6 +58,14 @@ cp .env.example .env
 ```env
 GOALSERVE_API_KEY=your_goalserve_key
 MONGO_URI=mongodb://user:password@host:27017/?authSource=admin
+
+# DigitalOcean Spaces (required for image sync)
+DO_ACCESS_KEY_ID=your_do_access_key
+DO_BUCKET_SECRET_KEY=your_do_secret_key
+DO_BUCKET_NAME=your_bucket_name
+DO_ORIGIN_ENDPOINT=https://your-bucket.region.digitaloceanspaces.com
+DO_CDN_ENDPOINT=https://your-bucket.region.cdn.digitaloceanspaces.com
+DO_IMAGES_FOLDER=GS/players
 ```
 
 ---
@@ -137,6 +145,26 @@ GET /leagues/{league_id}/injuries
 GET /leagues/{league_id}/teams
 ```
 
+### Images
+
+```
+GET  /images/placeholder-stats              # Count players with SM placeholder images
+POST /images/sync/bulk                      # Bulk replace images via GoalServe CDN (background job)
+GET  /images/sync/bulk/status/{job_id}      # Poll bulk job progress
+GET  /images/sync/runs                      # List all past image sync runs
+POST /images/sync/player/{api_player_id}    # Replace image for a single player
+```
+
+**Bulk sync request body:**
+```json
+{ "dry_run": false, "batch_size": 10, "min_image_bytes": 1000 }
+```
+
+**Single player request body:**
+```json
+{ "dry_run": false }
+```
+
 ---
 
 ## Supported Leagues
@@ -169,7 +197,8 @@ player_pricing/
 │   │   └── routes/
 │   │       ├── health.py
 │   │       ├── pricing.py           # Pipeline + player endpoints
-│   │       └── leagues.py
+│   │       ├── leagues.py
+│   │       └── images.py            # Image sync endpoints
 │   ├── extractors/
 │   │   └── goalserve.py             # Async GoalServe API client (httpx)
 │   ├── transformers/
@@ -183,6 +212,10 @@ player_pricing/
 │   │   └── engine.py                # Price formula + calibration solver
 │   ├── pipeline/
 │   │   └── orchestrator.py          # 4-call async ETL orchestration
+│   ├── services/
+│   │   └── image_service.py         # Image fetch → CDN upload → FGL DB update
+│   ├── utils/
+│   │   └── cdn.py                   # DigitalOcean Spaces client (boto3)
 │   └── loaders/
 │       ├── mongo_loader.py          # sportinerd_pricing DB persistence
 │       └── fgl_sync.py              # FGL player price sync (7-tier name matching)
@@ -199,8 +232,8 @@ Two databases on the same instance:
 
 | Database | Purpose |
 |----------|---------|
-| `sportinerd_pricing` | Pricing runs, player prices, standings/injury/GoalServe cache |
-| `Fantasy_Global_Livescore` | Master player records — pipeline writes `price` field here |
+| `sportinerd_pricing` | Pricing runs, player prices, standings/injury/GoalServe cache, image sync jobs |
+| `Fantasy_Global_Livescore` | Master player records — pipeline writes `price`; image sync writes `image` + `sportsmonk_image_url` |
 
 ---
 

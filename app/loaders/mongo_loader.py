@@ -301,4 +301,8 @@ async def ensure_indexes():
         [("player_id", 1), ("league_id", 1)], unique=True
     )
     await db.prev_season_cache.create_index("cached_at")
+    # Player mapping indexes
+    await db.player_mapping_jobs.create_index([("league_id", 1), ("started_at", -1)])
+    await db.player_mapping_results.create_index([("job_id", 1), ("tier", 1)])
+    await db.player_mapping_results.create_index([("job_id", 1), ("confidence", -1)])
     log.info("MongoDB indexes ensured")

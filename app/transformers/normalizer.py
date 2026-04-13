@@ -245,7 +245,7 @@ def extract_all_players(
     for team in teams:
         tid = str(team.get("id", ""))
         tname = team.get("name", "")
-        squad = team.get("squad", {})
+        squad = team.get("squad") or {}
         players = squad.get("player", [])
         if isinstance(players, dict):
             players = [players]
