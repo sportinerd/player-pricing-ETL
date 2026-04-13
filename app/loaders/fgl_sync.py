@@ -302,6 +302,7 @@ class FGLSync:
             pricing_payload = {
                 "price": gs.get("price"),
                 "goalserve_player_id": int(gs.get("player_id")),
+                "position_group": gs.get("position"),
             }
 
             ops.append(UpdateOne(
